@@ -5,9 +5,12 @@
 
 #define KSH_READLINE_BUFSIZE 1024
 #define ULONG unsigned long int
+#define KSH_TOKEN_BUFSIZE 64
+#define KSH_TOKEN_DELIMITER " \t\r\n\a"
 
 void ksh_loop(void);
 char* ksh_read_line(void);
+char** ksh_split_line(char* line);
 
 int main() 
 { 
@@ -18,14 +21,18 @@ int main()
 void ksh_loop(void) 
 {
     char *line{};
-    // char **args{};
+    char **args{};
     int status{1};    
 
     do {
         std::cout << "> ";
         line = ksh_read_line();
         std::cout << line << '\n';
-        // args = ksh_split_lines(line);
+
+        //? Maybe add what the person left out in parsing
+        args = ksh_split_line(line);
+        std::cout << *args << '\n';
+
         // status = ksh_execute(args);
 
         free(line);
@@ -74,4 +81,40 @@ char *ksh_read_line(void)
             }
         }
     }
+}
+
+char** ksh_split_line(char* line)
+{
+    ULONG token_bufsize{KSH_TOKEN_BUFSIZE};
+    ULONG position{0};
+    char** tokens = static_cast<char**>(std::malloc(sizeof(char*) * token_bufsize));
+    char* token{};
+
+    if (!tokens)
+    {
+        free(tokens);
+        std::cout  << "ksh: Allocation Error";
+        exit(EXIT_FAILURE);
+    }
+
+    token = strtok(line, KSH_TOKEN_DELIMITER);
+    while (token != NULL)
+    {
+        tokens[position] = token;
+        position++;
+
+        if (position >= token_bufsize) {
+            token_bufsize += KSH_TOKEN_BUFSIZE;
+            tokens = static_cast<char**>(std::realloc(tokens, token_bufsize));
+            if (!tokens) {
+                free(tokens);
+                std::cout  << "ksh: Allocation Error";
+                exit(EXIT_FAILURE);
+            }
+        };
+
+        token = strtok(NULL, KSH_TOKEN_DELIMITER);
+    }
+    tokens[position] = NULL;
+    return tokens;
 }

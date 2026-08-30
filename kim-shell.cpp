@@ -13,6 +13,7 @@
 void ksh_loop(void);
 char* ksh_read_line(void);
 char** ksh_split_line(char* line);
+int ksh_create_process(char** args);
 
 int main() 
 { 
@@ -29,17 +30,19 @@ void ksh_loop(void)
     do {
         std::cout << "> ";
         line = ksh_read_line();
-        std::cout << line << '\n';
+        // std::cout << line << '\n';
 
         //? Maybe add what the person left out in parsing
         args = ksh_split_line(line);
-        ULONG position{0};
+        // ULONG position{0};
 
-        while (args[position] != nullptr)
-        {
-            std::cout << args[position] << '\n';
-            position++;
-        };
+        // while (args[position] != nullptr)
+        // {
+        //     std::cout << args[position] << '\n';
+        //     position++;
+        // };
+
+        ksh_create_process(args);
 
         // status = ksh_execute(args);
 
@@ -131,7 +134,6 @@ char** ksh_split_line(char* line)
 int ksh_create_process(char** args)
 {
     pid_t pid{};
-    pid_t wpid{};
     int status{};    
 
     pid = fork();
@@ -150,7 +152,7 @@ int ksh_create_process(char** args)
     else
     {
         do {
-            wpid = waitpid(pid, &status, WUNTRACED);
+            waitpid(pid, &status, WUNTRACED);
         } while(!WIFEXITED(status) && !WIFSIGNALED(status));
     }
 

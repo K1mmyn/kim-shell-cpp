@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #define KSH_READLINE_BUFSIZE 1024
 #define ULONG unsigned long int
@@ -41,8 +42,11 @@ void ksh_loop(void)
         //     std::cout << args[position] << '\n';
         //     position++;
         // };
-
-        ksh_create_process(args);
+        
+        if (args[0] != nullptr) 
+        {
+            ksh_create_process(args);
+        }
 
         // status = ksh_execute(args);
 
@@ -147,7 +151,7 @@ int ksh_create_process(char** args)
         if (execvp(args[0], args) == -1) {
             std::cout << "ksh: Unable to exec" << '\n';
         }
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
     else
     {

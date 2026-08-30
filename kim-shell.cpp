@@ -15,6 +15,27 @@ void ksh_loop(void);
 char* ksh_read_line(void);
 char** ksh_split_line(char* line);
 int ksh_create_process(char** args);
+int ksh_execute(char** args);
+
+// BUILTIN FUNCS
+
+int ksh_cd(char** args);
+int ksh_help(char** );
+int ksh_exit(char** );
+int ksh_num_builtins();
+
+const char* builtin_str[] = {
+    "cd",
+    "help",
+    "exit"
+};
+
+int (*builtin_func[]) (char **) = {
+    &ksh_cd,
+    &ksh_help,
+    &ksh_exit
+};
+
 
 int main() 
 { 
@@ -43,15 +64,15 @@ void ksh_loop(void)
         //     position++;
         // };
         
-        if (args[0] != nullptr) 
-        {
-            ksh_create_process(args);
-        }
+        // if (args[0] != nullptr) 
+        // {
+        //     ksh_create_process(args);
+        // }
 
-        // status = ksh_execute(args);
+        status = ksh_execute(args);
 
         free(line);
-        // free(args);
+        free(args);
     } while (status);
 }
 
@@ -144,12 +165,12 @@ int ksh_create_process(char** args)
 
     if (pid < 0)
     {
-        std::cout << "ksh: Unable to fork" << '\n';
+        std::cerr << "ksh: Unable to fork" << '\n';
     } 
     else if (pid == 0) 
     {
         if (execvp(args[0], args) == -1) {
-            std::cout << "ksh: Unable to exec" << '\n';
+            std::cerr << "ksh: Unable to exec" << '\n';
         }
         exit(EXIT_FAILURE);
     }
@@ -160,5 +181,63 @@ int ksh_create_process(char** args)
         } while(!WIFEXITED(status) && !WIFSIGNALED(status));
     }
 
-    return EXIT_SUCCESS;
+    return 1;
+}
+
+int ksh_num_builtins() {
+    return sizeof(builtin_str) / sizeof(char *);
+}
+
+int ksh_cd(char **args) 
+{
+    if (args[1] == NULL) 
+    {
+        std::cerr << "ksh: expected agrument to \"cd\"" << '\n';
+    }
+    else 
+    {
+        if (chdir(args[1]) != 0)
+        {
+            std::cerr << "ksh: unable to switch directories" << '\n';
+        }
+    }
+    return 1;
+}
+
+int ksh_help(char **)
+{
+  int i{};
+  std::cout << "Kim's KSH Shell\n";
+  std::cout << "Type program names and arguments, and hit enter.\n";
+  std::cout << "The following are built in:\n";
+
+  for (i = 0; i < ksh_num_builtins(); i++) {
+    std::cout << " " << builtin_str[i] << '\n';
+  }
+
+  std::cout << "Use the man command for information on other programs.\n";
+  return 1;
+}
+
+int ksh_exit(char **)
+{
+  return 0;
+}
+
+int ksh_execute(char ** args)
+{
+  int i{};
+
+  if (args[0] == NULL) {
+    // An empty command was entered.
+    return 1;
+  }
+
+  for (i = 0; i < ksh_num_builtins(); i++) {
+    if (strcmp(args[0], builtin_str[i]) == 0) {
+      return (*builtin_func[i])(args);
+    }
+  }
+
+  return ksh_create_process(args);
 }

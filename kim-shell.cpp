@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <cstdio>
+#include <cstring>
 
 #define KSH_READLINE_BUFSIZE 1024
 #define ULONG unsigned long int
@@ -33,7 +34,7 @@ void ksh_loop(void)
         args = ksh_split_line(line);
         ULONG position{0};
 
-        while (!args[position])
+        while (args[position] != nullptr)
         {
             std::cout << args[position] << '\n';
             position++;
@@ -79,7 +80,7 @@ char *ksh_read_line(void)
         {
             bufsize += KSH_READLINE_BUFSIZE;
             buffer = static_cast<char*>(realloc(buffer, bufsize));
-            if (!buffer) 
+            if (buffer == nullptr) 
             {
                 free(buffer);
                 std::cerr << "ksh: Allocation error";
@@ -111,15 +112,15 @@ char** ksh_split_line(char* line)
 
         if (position >= token_bufsize) {
             token_bufsize += KSH_TOKEN_BUFSIZE;
-            tokens = static_cast<char**>(std::realloc(tokens, token_bufsize));
-            if (!tokens) {
+            tokens = static_cast<char**>(std::realloc(tokens, token_bufsize * sizeof(char*)));
+            if (tokens == nullptr) {
                 free(tokens);
                 std::cout  << "ksh: Allocation Error";
                 exit(EXIT_FAILURE);
             }
         };
 
-        token = strtok(NULL, KSH_TOKEN_DELIMITER);
+        token = std::strtok(NULL, KSH_TOKEN_DELIMITER);
     }
     tokens[position] = NULL;
     return tokens;

@@ -192,7 +192,7 @@ int ksh_cd(char **args)
 {
     if (args[1] == NULL) 
     {
-        std::cerr << "ksh: expected agrument to \"cd\"" << '\n';
+        std::cerr << "ksh: expected argument to \"cd\"" << '\n';
     }
     else 
     {

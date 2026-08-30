@@ -31,7 +31,13 @@ void ksh_loop(void)
 
         //? Maybe add what the person left out in parsing
         args = ksh_split_line(line);
-        std::cout << *args << '\n';
+        ULONG position{0};
+
+        while (!args[position])
+        {
+            std::cout << args[position] << '\n';
+            position++;
+        };
 
         // status = ksh_execute(args);
 

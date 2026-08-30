@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+#include <unistd.h>
+#include <sys/wait.h>
 
 #define KSH_READLINE_BUFSIZE 1024
 #define ULONG unsigned long int
@@ -12,6 +14,7 @@
 void ksh_loop(void);
 char* ksh_read_line(void);
 char** ksh_split_line(char* line);
+int ksh_create_process(char** args);
 
 int main() 
 { 
@@ -28,17 +31,22 @@ void ksh_loop(void)
     do {
         std::cout << "> ";
         line = ksh_read_line();
-        std::cout << line << '\n';
+        // std::cout << line << '\n';
 
         //? Maybe add what the person left out in parsing
         args = ksh_split_line(line);
-        ULONG position{0};
+        // ULONG position{0};
 
-        while (args[position] != nullptr)
+        // while (args[position] != nullptr)
+        // {
+        //     std::cout << args[position] << '\n';
+        //     position++;
+        // };
+        
+        if (args[0] != nullptr) 
         {
-            std::cout << args[position] << '\n';
-            position++;
-        };
+            ksh_create_process(args);
+        }
 
         // status = ksh_execute(args);
 
@@ -124,4 +132,33 @@ char** ksh_split_line(char* line)
     }
     tokens[position] = NULL;
     return tokens;
+}
+
+
+int ksh_create_process(char** args)
+{
+    pid_t pid{};
+    int status{};    
+
+    pid = fork();
+
+    if (pid < 0)
+    {
+        std::cout << "ksh: Unable to fork" << '\n';
+    } 
+    else if (pid == 0) 
+    {
+        if (execvp(args[0], args) == -1) {
+            std::cout << "ksh: Unable to exec" << '\n';
+        }
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        do {
+            waitpid(pid, &status, WUNTRACED);
+        } while(!WIFEXITED(status) && !WIFSIGNALED(status));
+    }
+
+    return EXIT_SUCCESS;
 }

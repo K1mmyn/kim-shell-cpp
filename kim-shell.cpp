@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+#include <unistd.h>
 
 #define KSH_READLINE_BUFSIZE 1024
 #define ULONG unsigned long int
@@ -124,4 +125,34 @@ char** ksh_split_line(char* line)
     }
     tokens[position] = NULL;
     return tokens;
+}
+
+
+int ksh_create_process(char** args)
+{
+    pid_t pid{};
+    pid_t wpid{};
+    int status{};    
+
+    pid = fork();
+
+    if (pid < 0)
+    {
+        std::cout << "ksh: Unable to fork" << '\n';
+    } 
+    else if (pid == 0) 
+    {
+        if (execvp(args[0], args) == -1) {
+            std::cout << "ksh: Unable to exec" << '\n';
+        }
+        return EXIT_FAILURE;
+    }
+    else
+    {
+        do {
+            wpid = waitpid(pid, &status, WUNTRACED);
+        } while(!WIFEXITED(status) && !WIFSIGNALED(status));
+    }
+
+    return EXIT_SUCCESS;
 }

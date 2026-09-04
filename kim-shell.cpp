@@ -9,7 +9,7 @@
 #define KSH_READLINE_BUFSIZE 1024
 #define ULONG unsigned long int
 #define KSH_TOKEN_BUFSIZE 64
-#define KSH_TOKEN_DELIMITER " \t\r\n\a"
+#define KSH_TOKEN_DELIMITER " \t\r\n\a\"'"
 
 void ksh_loop(void);
 char* ksh_read_line(void);
@@ -47,7 +47,7 @@ void ksh_loop(void)
 {
     char *line{};
     char **args{};
-    int status{1};    
+    int status{};    
 
     do {
         std::cout << "> ";
@@ -123,9 +123,9 @@ char** ksh_split_line(char* line)
 {
     ULONG token_bufsize{KSH_TOKEN_BUFSIZE};
     ULONG position{0};
-    char** tokens = static_cast<char**>(std::malloc(sizeof(char*) * token_bufsize));
-    char* token{};
-
+    char** tokens{static_cast<char**>(std::malloc(sizeof(char*) * token_bufsize))};
+    
+    
     if (!tokens)
     {
         free(tokens);
@@ -133,23 +133,38 @@ char** ksh_split_line(char* line)
         exit(EXIT_FAILURE);
     }
 
-    token = strtok(line, KSH_TOKEN_DELIMITER);
-    while (token != NULL)
+    while (*line != '\0')
     {
-        tokens[position] = token;
-        position++;
+        if (isspace(static_cast<int>(*line))) {
+            line++;
+            continue;
+        }
 
-        if (position >= token_bufsize) {
-            token_bufsize += KSH_TOKEN_BUFSIZE;
-            tokens = static_cast<char**>(std::realloc(tokens, token_bufsize * sizeof(char*)));
-            if (tokens == nullptr) {
-                free(tokens);
-                std::cout  << "ksh: Allocation Error";
-                exit(EXIT_FAILURE);
+        char* token_start = line;
+        int inquote{0};
+
+        while (*line != '\0')
+        {
+            if (*line == '"') 
+            {
+                inquote = !inquote;
             }
-        };
 
-        token = std::strtok(NULL, KSH_TOKEN_DELIMITER);
+            if (!inquote && isspace(static_cast<int>(*line))) {
+                break;
+            }
+            
+            line++;
+
+        }
+
+        if (*line != '\0') {
+            *line = '\0'; 
+            line++;
+        }
+        std::cout << token_start << '\n';
+        tokens[position++] = token_start;
+        
     }
     tokens[position] = NULL;
     return tokens;

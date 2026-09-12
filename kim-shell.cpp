@@ -200,6 +200,7 @@ void ksh_print_line(char* line, Trie KSH_TRIE) {
     std::cout << "$ " << (KSH_TRIE.search(command) ? KSH_GREEN : KSH_RED) << command << KSH_RESET;
     std::cout << (line + length); 
     std::cout << std::flush;
+    delete[] command;
 }
 
 char** ksh_split_line(char* line)
@@ -387,7 +388,6 @@ char** ksh_increase_buffer_size(char** buffer, ULONG* current_buffsize, ULONG ad
         free(new_buffer);
     }
     return new_buffer;
-<<<<<<< HEAD
 }
 
 int getch() {
@@ -405,7 +405,7 @@ int getch() {
         return EOF;
     }
 
-    char ch{};
+    unsigned char ch{};
     ssize_t result = read(STDIN_FILENO, &ch, 1);
 
     int restored = tcsetattr(STDIN_FILENO, TCSANOW, &oldattr);
@@ -413,6 +413,4 @@ int getch() {
         return EOF;
     }
     return ch;
-=======
->>>>>>> origin/main
 }

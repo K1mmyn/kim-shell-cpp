@@ -15,6 +15,7 @@ Run the make file
 
 ```text
 make
+./main
 ```
 
 # Make Installation 

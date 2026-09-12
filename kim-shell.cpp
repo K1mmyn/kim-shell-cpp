@@ -53,13 +53,31 @@ void ksh_loop(void)
     char **args{};
     int status{};  
     
-    // char* command[KSH_TOKEN_BUFSIZE];
-    // std::ifstream terminal_command_file;
-    // terminal_command_file.
+    Trie KSH_TRIE{};
+    std::ifstream terminal_command_file;
+    terminal_command_file.open("terminal_commands.txt");
+    
+    if (terminal_command_file){
+        char command[64];
 
-    // while (terminal_command_file.getline(command, sizeof(command)))
+        while (terminal_command_file.getline(command, 64)) {
+            KSH_TRIE.insert(command);
+        }
+    
+    } else {
+        std::cout << "ksh: Unable to load command highlighting" << '\n';
+    }
 
-    // Trie* KSH_TRIE = new Trie();
+    terminal_command_file.close();
+
+    char mutable_str[] = "l"; 
+    
+    char* ptr = mutable_str;  
+    std::cout << std::boolalpha;
+    std::cout << KSH_TRIE.search(ptr) << '\n';
+
+    
+
 
     
 

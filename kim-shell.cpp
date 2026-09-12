@@ -10,18 +10,26 @@
 #include <termios.h>
 #include <stdio.h>
 
-#define KSH_READLINE_BUFSIZE 1024
-#define ULONG unsigned long int
-#define KSH_TOKEN_BUFSIZE 64
-#define KSH_TOKEN_DELIMITER " \t\r\n\a\"'"
+#define KSH_READLINE_BUFSIZE     1024
+#define ULONG                    unsigned long int
+#define KSH_TOKEN_BUFSIZE        64
+#define KSH_TOKEN_DELIMITER      "\t\r\n\a\"' "
+#define KSH_CLEAR_TERMINAL_LINE  "\r\x1b[2K"
+#define KSH_CLEAR_TERMINAL       "\x1b[H\x1b[2J"
+#define KSH_RED                  "\033[31m"
+#define KSH_GREEN                "\033[32m"
+#define KSH_RESET                "\033[0m"
 
-void ksh_loop(void);
-char* ksh_read_line(void);
-char** ksh_split_line(char* line);
-int ksh_create_process(char** args);
-int ksh_execute(char** args);
-char* ksh_increase_buffer_size(char* buffer, ULONG* current_buffsize, ULONG additional_bufsize);
-char** ksh_increase_buffer_size(char** buffer, ULONG* current_buffsize, ULONG additional_bufsize);
+void    ksh_loop(void);
+char*   ksh_read_line(Trie KSH_TRIE);
+char**  ksh_split_line(char* line);
+int     ksh_create_process(char** args);
+int     ksh_execute(char** args);
+char*   ksh_increase_buffer_size(char* buffer, ULONG* current_buffsize, ULONG additional_bufsize);
+char**  ksh_increase_buffer_size(char** buffer, ULONG* current_buffsize, ULONG additional_bufsize);
+bool    ksh_is_terminal_command(char* command, Trie trie);
+void    ksh_print_line(char* buffer, Trie KSH_TRIE);
+int     getch(void);
 
 // BUILTIN FUNCS
 
@@ -49,18 +57,6 @@ int main()
     return EXIT_SUCCESS; 
 }
 
-char getch() {
-    struct termios oldattr, newattr;
-    char ch;
-    tcgetattr(STDIN_FILENO, &oldattr);
-    newattr = oldattr;
-    newattr.c_lflag &= static_cast<tcflag_t>(~(ICANON | ECHO));
-    tcsetattr(STDIN_FILENO, TCSANOW, &newattr);
-    read(STDIN_FILENO, &ch, 1);
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldattr);
-    return ch;
-}
-
 void ksh_loop(void) 
 {
     std::cout << "\x1b[H\x1b[2J";
@@ -86,27 +82,11 @@ void ksh_loop(void)
 
     terminal_command_file.close();
 
-    // char mutable_str[] = "l"; 
-    
-    // char* ptr = mutable_str;  
-    // std::cout << std::boolalpha;
-    // std::cout << KSH_TRIE.search(ptr) << '\n';
-
-
-
-    
-
-
     do {
         
         std::cout << "$ " << std::flush;
-        line = ksh_read_line();
-        // std::cout << line << '\n';
-
-        //? Maybe add what the person left out in parsing 
-        //? Change parsing to have the delimiter
+        line = ksh_read_line(KSH_TRIE);
         args = ksh_split_line(line);
-
         status = ksh_execute(args);
 
         free(line);
@@ -114,7 +94,7 @@ void ksh_loop(void)
     } while (status);
 }
 
-char *ksh_read_line(void) 
+char *ksh_read_line(Trie KSH_TRIE) 
 {
     ULONG bufsize{KSH_READLINE_BUFSIZE};
     ULONG position{0};
@@ -153,13 +133,13 @@ char *ksh_read_line(void)
                 if (static_cast<char>(dquote_char) == '"')
                 {
                     inquote[0] = !inquote[0];
-                    while ((dquote_char = getchar()) != '\n' && c != EOF); 
+                    while ((dquote_char = getchar()) != '\n' && dquote_char != EOF); 
                     break;
                 } 
                 if (static_cast<char>(dquote_char) == '\'')
                 {
                     inquote[1] = !inquote[1];
-                    while ((dquote_char = getchar()) != '\n' && c != EOF); 
+                    while ((dquote_char = getchar()) != '\n' && dquote_char != EOF); 
                     break;
                 } 
             }
@@ -174,9 +154,9 @@ char *ksh_read_line(void)
             }
 
             char char_to_remove = buffer[--position];
-            if (char_to_remove == '"') {
+            if (char_to_remove == '"' && !inquote[1]) {
                 inquote[0] = !inquote[0];
-            } else if (char_to_remove == '\'')  {
+            } else if (char_to_remove == '\'' && !inquote[0])  {
                 inquote[1] = !inquote[1];
             } 
 
@@ -205,9 +185,21 @@ char *ksh_read_line(void)
         }
 
         buffer[position] = '\0';
-        std::cout << "\r\x1b[2K";
-        std::cout << "$ " << buffer << std::flush;
+        ksh_print_line(buffer, KSH_TRIE);
     }
+}
+
+void ksh_print_line(char* line, Trie KSH_TRIE) {
+    size_t length{std::strcspn(line, " ")};
+    char* command = new char[length + 1];
+
+    std::strncpy(command, line, length);
+    command[length] = '\0';
+
+    std::cout << KSH_CLEAR_TERMINAL_LINE;
+    std::cout << "$ " << (KSH_TRIE.search(command) ? KSH_GREEN : KSH_RED) << command << KSH_RESET;
+    std::cout << (line + length); 
+    std::cout << std::flush;
 }
 
 char** ksh_split_line(char* line)
@@ -395,4 +387,29 @@ char** ksh_increase_buffer_size(char** buffer, ULONG* current_buffsize, ULONG ad
         free(new_buffer);
     }
     return new_buffer;
+}
+
+int getch() {
+    termios oldattr{};
+    if (tcgetattr(STDIN_FILENO, &oldattr) == -1) {
+        return EOF;
+    }
+
+    termios newattr = oldattr;
+    newattr.c_lflag &= static_cast<tcflag_t>(~(ICANON | ECHO));
+    newattr.c_cc[VMIN] = 1;
+    newattr.c_cc[VTIME] = 0;
+
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &newattr) == -1) {
+        return EOF;
+    }
+
+    char ch{};
+    ssize_t result = read(STDIN_FILENO, &ch, 1);
+
+    int restored = tcsetattr(STDIN_FILENO, TCSANOW, &oldattr);
+    if (result != 1 || restored == -1) {
+        return EOF;
+    }
+    return ch;
 }

@@ -12,26 +12,12 @@ TrieNode::TrieNode() {
 
 Trie::Trie() { root = new TrieNode(); }
 
-char* lower_word(char* word) {
-        char* word_start = word;
-        while (*word != '\0') {
-            char c{*word};
-            if (c < 'a') {
-                c += 26;
-            }
-            *word = c;
-            word++;
-        }
-        return word_start;
-    }
-
 void Trie::insert(char* word) {
 
-    word = lower_word(word);
     TrieNode* curr = root;
     while (*word != '\0') {
-        char c{*word};
-        int index = static_cast<int>(c) - 'a';
+        int c = std::tolower(static_cast<unsigned char>(*word));
+        int index = c - 'a';
         
         if (index < 0 || index > 25 || !curr->children[index]) {
             curr->children[index] = new TrieNode();
@@ -45,12 +31,11 @@ void Trie::insert(char* word) {
 }
 
 bool Trie::search(char* word) {
-    word = lower_word(word);
 
     TrieNode* curr = root;
     while (*word != '\0') {
-        char c{*word};
-        int index = static_cast<int>(c) - 'a';
+        int c = std::tolower(static_cast<unsigned char>(*word));
+        int index = c - 'a';
 
         if (index < 0 || index > 25 || !curr->children[index]) {
             return false;
@@ -65,12 +50,10 @@ bool Trie::search(char* word) {
 
 bool Trie::startsWith(char* word) {
 
-    word = lower_word(word);
     TrieNode* curr = root;
     while (*word != '\0') {
-        char c{*word};
-
-        int index = static_cast<int>(c) - 'a';
+        int c = std::tolower(static_cast<unsigned char>(*word));
+        int index = c - 'a';
 
         if (index < 0 || index > 25 || !curr->children[index]) {
             return false;

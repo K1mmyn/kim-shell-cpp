@@ -1,1 +1,8 @@
+<<<<<<< Updated upstream
 main
+=======
+main
+build
+.vscode
+*.o
+>>>>>>> Stashed changes

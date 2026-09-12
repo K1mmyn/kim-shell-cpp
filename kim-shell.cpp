@@ -9,13 +9,15 @@
 #define KSH_READLINE_BUFSIZE 1024
 #define ULONG unsigned long int
 #define KSH_TOKEN_BUFSIZE 64
-#define KSH_TOKEN_DELIMITER " \t\r\n\a"
+#define KSH_TOKEN_DELIMITER " \t\r\n\a\"'"
 
 void ksh_loop(void);
 char* ksh_read_line(void);
 char** ksh_split_line(char* line);
 int ksh_create_process(char** args);
 int ksh_execute(char** args);
+char* ksh_increase_buffer_size(char* buffer, ULONG* current_buffsize, ULONG additional_bufsize);
+char** ksh_increase_buffer_size(char** buffer, ULONG* current_buffsize, ULONG additional_bufsize);
 
 // BUILTIN FUNCS
 
@@ -47,27 +49,17 @@ void ksh_loop(void)
 {
     char *line{};
     char **args{};
-    int status{1};    
+    int status{};    
 
     do {
-        std::cout << "> ";
+        
+        std::cout << "$ ";
         line = ksh_read_line();
         // std::cout << line << '\n';
 
-        //? Maybe add what the person left out in parsing
+        //? Maybe add what the person left out in parsing 
+        //? Change parsing to have the delimiter
         args = ksh_split_line(line);
-        // ULONG position{0};
-
-        // while (args[position] != nullptr)
-        // {
-        //     std::cout << args[position] << '\n';
-        //     position++;
-        // };
-        
-        // if (args[0] != nullptr) 
-        // {
-        //     ksh_create_process(args);
-        // }
 
         status = ksh_execute(args);
 
@@ -82,6 +74,9 @@ char *ksh_read_line(void)
     ULONG position{0};
     char* buffer = static_cast<char*>(malloc(sizeof(char) * bufsize));
     int c{};
+    
+    // inquote [ " , ' ] = {bool, bool}
+    int inquote[2]{0, 0};
 
     if (!buffer) 
     {
@@ -95,11 +90,45 @@ char *ksh_read_line(void)
 
         if (c == EOF || c == '\n') 
         {
+            while (inquote[0] || inquote[1]) {
+                std::cout << "dquote> " ; 
+                int dquote_char{getchar()};
+                if (dquote_char == EOF || dquote_char == '\n') {
+                    continue;
+                }
+                buffer[position++] = static_cast<char>(dquote_char);
+                
+                if (position >= bufsize) 
+                {
+                    buffer = ksh_increase_buffer_size(buffer, &bufsize, KSH_READLINE_BUFSIZE);
+                    if (buffer == nullptr) exit(EXIT_FAILURE);
+                }
+                if (static_cast<char>(dquote_char) == '"')
+                {
+                    inquote[0] = !inquote[0];
+                    while ((dquote_char = getchar()) != '\n' && c != EOF); 
+                    break;
+                } 
+                if (static_cast<char>(dquote_char) == '\'')
+                {
+                    inquote[1] = !inquote[1];
+                    while ((dquote_char = getchar()) != '\n' && c != EOF); 
+                    break;
+                } 
+            }
             buffer[position] = '\0';
             return buffer;
         } 
         else 
         {
+            if (!inquote[1] && static_cast<char>(c) == '"')
+            {
+                inquote[0] = !inquote[0];
+            }
+            if (!inquote[0] && static_cast<char>(c) == '\'')
+            {
+                inquote[1] = !inquote[1];
+            }
             buffer[position] = static_cast<char>(c);
         }
 
@@ -107,14 +136,8 @@ char *ksh_read_line(void)
 
         if (position >= bufsize) 
         {
-            bufsize += KSH_READLINE_BUFSIZE;
-            buffer = static_cast<char*>(realloc(buffer, bufsize));
-            if (buffer == nullptr) 
-            {
-                free(buffer);
-                std::cerr << "ksh: Allocation error";
-                exit(EXIT_FAILURE);
-            }
+            buffer = ksh_increase_buffer_size(buffer, &bufsize, KSH_READLINE_BUFSIZE);
+            if (buffer == nullptr) exit(EXIT_FAILURE);
         }
     }
 }
@@ -123,9 +146,9 @@ char** ksh_split_line(char* line)
 {
     ULONG token_bufsize{KSH_TOKEN_BUFSIZE};
     ULONG position{0};
-    char** tokens = static_cast<char**>(std::malloc(sizeof(char*) * token_bufsize));
-    char* token{};
-
+    char** tokens{static_cast<char**>(std::malloc(sizeof(char*) * token_bufsize))};
+    
+    
     if (!tokens)
     {
         free(tokens);
@@ -133,23 +156,66 @@ char** ksh_split_line(char* line)
         exit(EXIT_FAILURE);
     }
 
-    token = strtok(line, KSH_TOKEN_DELIMITER);
-    while (token != NULL)
+    while (*line != '\0')
     {
-        tokens[position] = token;
-        position++;
+        if (isspace(static_cast<int>(*line))) {
+            line++;
+            continue;
+        }
 
-        if (position >= token_bufsize) {
-            token_bufsize += KSH_TOKEN_BUFSIZE;
-            tokens = static_cast<char**>(std::realloc(tokens, token_bufsize * sizeof(char*)));
-            if (tokens == nullptr) {
-                free(tokens);
-                std::cout  << "ksh: Allocation Error";
-                exit(EXIT_FAILURE);
+        char* token_start = line;
+
+        char* read_head{token_start};
+        char* write_head{token_start};
+
+        // read_head_inquote [ " , ' ] = {bool, bool}
+        int read_head_inquote[2] = {0, 0};
+
+        while (*read_head != '\0')
+        {
+            
+            if (!read_head_inquote[1] && *read_head == '"') 
+            {
+                read_head_inquote[0] = !read_head_inquote[0];
+                read_head++;
+                line++;
+                continue;
             }
-        };
 
-        token = std::strtok(NULL, KSH_TOKEN_DELIMITER);
+            if (!read_head_inquote[0] && *read_head == '\'') 
+            {
+                read_head_inquote[1] = !read_head_inquote[1];
+                read_head++;
+                line++;
+                continue;
+            }
+
+            if (!read_head_inquote[0] && !read_head_inquote[1] && isspace(static_cast<int>(*read_head))) {
+                break;
+            }
+
+            *write_head = *read_head;
+            write_head++;
+            read_head++;
+            line++;
+        }
+
+        // If we are at a space replace with null terminator
+        // If we are at the end of the token string this will never be true
+        if (*line != '\0') {
+            *line = '\0';
+            line++;
+        }
+
+        *write_head = '\0';
+        tokens[position++] = token_start;
+        
+        if (position >= token_bufsize) 
+        {
+            tokens = ksh_increase_buffer_size(tokens, &token_bufsize, KSH_TOKEN_BUFSIZE);
+            if (tokens == nullptr) exit(EXIT_FAILURE);
+        }
+        
     }
     tokens[position] = NULL;
     return tokens;
@@ -240,4 +306,25 @@ int ksh_execute(char ** args)
   }
 
   return ksh_create_process(args);
+}
+
+char* ksh_increase_buffer_size(char* buffer, ULONG* current_buffsize, ULONG additional_bufsize)
+{
+    *current_buffsize += additional_bufsize;
+    char* new_buffer = static_cast<char*>(std::realloc(buffer, (sizeof(char) * (*current_buffsize))));
+    if (!new_buffer) {
+        std::cout << "ksh: Allocation Error \n";
+        free(new_buffer);
+    }
+    return new_buffer;
+}
+char** ksh_increase_buffer_size(char** buffer, ULONG* current_buffsize, ULONG additional_bufsize)
+{
+    *current_buffsize += additional_bufsize;
+    char** new_buffer = static_cast<char**>(std::realloc(buffer, (sizeof(char*) * (*current_buffsize))));
+    if (!new_buffer) {
+        std::cout << "ksh: Allocation Error \n";
+        free(new_buffer);
+    }
+    return new_buffer;
 }

@@ -7,6 +7,8 @@
 #include <sys/wait.h>
 #include <fstream>
 #include "trie.h"
+#include <termios.h>
+#include <stdio.h>
 
 #define KSH_READLINE_BUFSIZE 1024
 #define ULONG unsigned long int
@@ -47,8 +49,22 @@ int main()
     return EXIT_SUCCESS; 
 }
 
+char getch() {
+    struct termios oldattr, newattr;
+    char ch;
+    tcgetattr(STDIN_FILENO, &oldattr);
+    newattr = oldattr;
+    newattr.c_lflag &= static_cast<tcflag_t>(~(ICANON | ECHO));
+    tcsetattr(STDIN_FILENO, TCSANOW, &newattr);
+    read(STDIN_FILENO, &ch, 1);
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldattr);
+    return ch;
+}
+
 void ksh_loop(void) 
 {
+    std::cout << "\x1b[H\x1b[2J";
+
     char *line{};
     char **args{};
     int status{};  
@@ -70,13 +86,12 @@ void ksh_loop(void)
 
     terminal_command_file.close();
 
-    char mutable_str[] = "l"; 
+    // char mutable_str[] = "l"; 
     
-    char* ptr = mutable_str;  
-    std::cout << std::boolalpha;
-    std::cout << KSH_TRIE.search(ptr) << '\n';
+    // char* ptr = mutable_str;  
+    // std::cout << std::boolalpha;
+    // std::cout << KSH_TRIE.search(ptr) << '\n';
 
-    
 
 
     
@@ -84,7 +99,7 @@ void ksh_loop(void)
 
     do {
         
-        std::cout << "$ ";
+        std::cout << "$ " << std::flush;
         line = ksh_read_line();
         // std::cout << line << '\n';
 
@@ -117,7 +132,8 @@ char *ksh_read_line(void)
     }
 
     while (1) {
-        c = getchar();
+
+        c = getch();
 
         if (c == EOF || c == '\n') 
         {
@@ -148,8 +164,25 @@ char *ksh_read_line(void)
                 } 
             }
             buffer[position] = '\0';
+            std::cout << '\n';
             return buffer;
         } 
+        else if (c == '\x7f')
+        {
+            if (position == 0) {
+                continue;
+            }
+
+            char char_to_remove = buffer[--position];
+            if (char_to_remove == '"') {
+                inquote[0] = !inquote[0];
+            } else if (char_to_remove == '\'')  {
+                inquote[1] = !inquote[1];
+            } 
+
+            buffer[position] = '\0';
+
+        }
         else 
         {
             if (!inquote[1] && static_cast<char>(c) == '"')
@@ -161,15 +194,19 @@ char *ksh_read_line(void)
                 inquote[1] = !inquote[1];
             }
             buffer[position] = static_cast<char>(c);
+            position++;
         }
 
-        position++;
 
         if (position >= bufsize) 
         {
             buffer = ksh_increase_buffer_size(buffer, &bufsize, KSH_READLINE_BUFSIZE);
             if (buffer == nullptr) exit(EXIT_FAILURE);
         }
+
+        buffer[position] = '\0';
+        std::cout << "\r\x1b[2K";
+        std::cout << "$ " << buffer << std::flush;
     }
 }
 

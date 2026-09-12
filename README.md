@@ -4,6 +4,8 @@ Hello! My name is Kim and as of writing this shell I am in my penultimate year o
 
 For this project, I used CodeRabbit to review my code to make sure there weren't too many issues with code.
 
+Blog which inspired this project: https://brennan.io/2015/01/16/write-a-shell-in-c/
+
 # Installation 
 
 Clone the repo

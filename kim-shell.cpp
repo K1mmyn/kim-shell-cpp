@@ -387,6 +387,7 @@ char** ksh_increase_buffer_size(char** buffer, ULONG* current_buffsize, ULONG ad
         free(new_buffer);
     }
     return new_buffer;
+<<<<<<< HEAD
 }
 
 int getch() {
@@ -412,4 +413,6 @@ int getch() {
         return EOF;
     }
     return ch;
+=======
+>>>>>>> origin/main
 }

@@ -19,7 +19,11 @@ void Trie::insert(char* word) {
         int c = std::tolower(static_cast<unsigned char>(*word));
         int index = c - 'a';
         
-        if (index < 0 || index > 25 || !curr->children[index]) {
+        if (index < 0 || index > 25) {
+            return;
+        }
+            
+        if (!curr->children[index]) {
             curr->children[index] = new TrieNode();
         }
 

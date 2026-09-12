@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 main
 =======
@@ -6,3 +7,9 @@ build
 .vscode
 *.o
 >>>>>>> Stashed changes
+=======
+main
+build
+.vscode
+*.o
+>>>>>>> origin/main
